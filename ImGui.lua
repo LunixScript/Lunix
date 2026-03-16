@@ -540,13 +540,19 @@ function ImGui:ContainerClass(Frame: Frame, Class, Window)
 
 		function Config:SetValue(Text)
 			TextBox.Text = tostring(Text)
-			Config.Value = Text
+			Config.Value = tostring(Text)
 			return Config
 		end
 
 		function Config:Clear()
 			TextBox.Text = ""
+			Config.Value = ""
 			return Config
+		end
+
+		-- Always read live from TextBox so .Value is never stale
+		function Config:GetValue()
+			return TextBox.Text
 		end
 
 		return ObjectClass
