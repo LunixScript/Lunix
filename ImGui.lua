@@ -1348,41 +1348,49 @@ end
 
 function ImGui:ApplyResizable(MinSize, Frame: Frame, Dragger: TextButton, Config)
 	local DragStart
-	local OrignialSize
+	local OriginalSize
 
 	MinSize = MinSize or Vector2.new(160, 90)
 
-	Dragger.MouseButton1Down:Connect(function()
+	local AllowedTypes = {
+		Enum.UserInputType.MouseButton1,
+		Enum.UserInputType.Touch,
+	}
+
+	local function getPos(Input)
+		return Vector2.new(Input.Position.X, Input.Position.Y)
+	end
+
+	Dragger.InputBegan:Connect(function(Input)
+		if not table.find(AllowedTypes, Input.UserInputType) then return end
 		if DragStart then return end
-		OrignialSize = Frame.AbsoluteSize			
-		DragStart = Vector2.new(Mouse.X, Mouse.Y)
-	end)	
-
-	UserInputService.InputChanged:Connect(function(Input)
-		if not DragStart or Input.UserInputType ~= Enum.UserInputType.MouseMovement then 
-			return
-		end
-
-		local MousePos = Vector2.new(Mouse.X, Mouse.Y)
-		local mouseMoved = MousePos - DragStart
-
-		local NewSize = OrignialSize + mouseMoved
-		NewSize = UDim2.fromOffset(
-			math.max(MinSize.X, NewSize.X), 
-			math.max(MinSize.Y, NewSize.Y)
-		)
-
-		Frame.Size = NewSize
-		if Config then
-			Config.Size = NewSize
-		end
+		OriginalSize = Frame.AbsoluteSize
+		DragStart = getPos(Input)
 	end)
 
+	local function onMove(Input)
+		if not DragStart then return end
+		local allowed = Input.UserInputType == Enum.UserInputType.MouseMovement
+			or Input.UserInputType == Enum.UserInputType.Touch
+		if not allowed then return end
+		local Pos = getPos(Input)
+		local moved = Pos - DragStart
+		local NewSize = UDim2.fromOffset(
+			math.max(MinSize.X, OriginalSize.X + moved.X),
+			math.max(MinSize.Y, OriginalSize.Y + moved.Y)
+		)
+		Frame.Size = NewSize
+		if Config then Config.Size = NewSize end
+	end
+
+	UserInputService.InputChanged:Connect(onMove)
+	UserInputService.TouchMoved:Connect(onMove)
+
 	UserInputService.InputEnded:Connect(function(Input)
-		if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+		if table.find(AllowedTypes, Input.UserInputType) then
 			DragStart = nil
 		end
-	end)	
+	end)
 end
 
 function ImGui:ConnectHover(Config)
